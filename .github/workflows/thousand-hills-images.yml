@@ -1,0 +1,61 @@
+# Thousand Hills fork: build the self-hosted backend and frontend images and
+# push them to GHCR, tagged with the commit SHA (deploys never use `latest`).
+# Frontend build values come from this repo's Actions *variables*; they are
+# public (they ship in the browser bundle), so none of them are secrets.
+name: Thousand Hills images
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: backend
+            context: workspace/backend
+            file: workspace/backend/production.Dockerfile
+          - name: frontend
+            context: workspace/frontend
+            file: workspace/frontend/Dockerfile
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Require the Firebase build variables
+        if: matrix.name == 'frontend'
+        env:
+          API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          APP_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+        run: |
+          for v in API_KEY AUTH_DOMAIN PROJECT_ID APP_ID API_URL; do
+            if [ -z "$(printenv "$v")" ]; then echo "::error::Actions variable for $v is not set"; exit 1; fi
+          done
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: true
+          tags: ghcr.io/thousand-hills/openagents-${{ matrix.name }}:${{ github.sha }}
+          build-args: |
+            RELEASE_SHA=${{ github.sha }}
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_FIRST_PARTY_HOSTNAMES=${{ vars.NEXT_PUBLIC_FIRST_PARTY_HOSTNAMES }}
+            NEXT_PUBLIC_INLINE_LOGIN=1
+            NEXT_PUBLIC_FIREBASE_API_KEY=${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+            NEXT_PUBLIC_FIREBASE_APP_ID=${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
+            NEXT_PUBLIC_GOOGLE_HOSTED_DOMAIN=${{ vars.NEXT_PUBLIC_GOOGLE_HOSTED_DOMAIN }}

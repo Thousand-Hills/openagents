@@ -10,21 +10,25 @@ import {
   type User,
 } from 'firebase/auth';
 
+// Thousand Hills fork: the web config comes from build args (frontend
+// Dockerfile) instead of OpenAgents' own `openagentsweb` project. No fallback
+// to their project on purpose: a build without these must fail sign-in, not
+// log users into someone else's identity tenant.
 const firebaseConfig = {
-  apiKey: 'AIzaSyCXgN-7HfgAQiN0pRKqGi8jMbGGo9e9X34',
-  authDomain: 'openagentsweb.firebaseapp.com',
-  projectId: 'openagentsweb',
-  storageBucket: 'openagentsweb.firebasestorage.app',
-  messagingSenderId: '796726902048',
-  appId: '1:796726902048:web:5b9079c5b2c3061edc2b45',
-  measurementId: 'G-1QYBRXC8RK',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 
 const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
+// `hd` only pre-selects Workspace accounts in Google's chooser; the backend
+// enforces the domain.
+const hostedDomain = process.env.NEXT_PUBLIC_GOOGLE_HOSTED_DOMAIN;
+googleProvider.setCustomParameters({ prompt: 'select_account', ...(hostedDomain ? { hd: hostedDomain } : {}) });
 
 export async function signInWithGoogle() {
   const result = await signInWithPopup(auth, googleProvider);
