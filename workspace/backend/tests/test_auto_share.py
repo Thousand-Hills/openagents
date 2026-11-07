@@ -30,3 +30,14 @@ def test_new_agent_not_shared_when_off(client, workspace, db, monkeypatch):
     monkeypatch.setattr(config, "AUTO_SHARE_AGENTS_WITH_EVERYONE", False)
     assert _join(client, workspace, "hire-two").status_code == 200
     assert _everyone_grants(db, workspace, "hire-two") == []
+
+
+def test_removing_agent_drops_its_grants(client, workspace, db, monkeypatch):
+    monkeypatch.setattr(config, "AUTO_SHARE_AGENTS_WITH_EVERYONE", True)
+    assert _join(client, workspace, "hire-three").status_code == 200
+    assert len(_everyone_grants(db, workspace, "hire-three")) == 1
+    r = client.delete(f"/v1/workspaces/{workspace['id']}/members/hire-three",
+                      headers={"X-Workspace-Token": workspace["token"]})
+    assert r.status_code == 200
+    db.expire_all()
+    assert _everyone_grants(db, workspace, "hire-three") == []

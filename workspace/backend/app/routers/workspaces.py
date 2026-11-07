@@ -675,6 +675,15 @@ def remove_member(
 
     from app.services import hosted_agents
     hosted = hosted_agents.release(db, workspace.id, agent_name)
+    # Thousand Hills: grants are keyed by name with no FK, so drop the agent's
+    # grants (on it and held by it) or a re-hire under that name inherits them.
+    from sqlalchemy import and_, delete
+    from app.models import ResourceGrant
+    db.execute(delete(ResourceGrant).where(
+        ResourceGrant.workspace_id == workspace.id,
+        or_(and_(ResourceGrant.resource_kind == "agent", ResourceGrant.resource_id == agent_name),
+            and_(ResourceGrant.grantee_kind == "agent", ResourceGrant.grantee_id == agent_name)),
+    ))
     db.delete(member)
     db.commit()
     if hosted is not None:
