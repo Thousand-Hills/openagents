@@ -43,6 +43,7 @@ import {
   useLayout,
   RAIL_WIDTH_COLLAPSED,
   RAIL_WIDTH_EXPANDED,
+  HIDDEN_VIEWS,
   type ViewMode,
 } from './layout-context';
 import { SearchMenu } from './search-menu';
@@ -349,7 +350,7 @@ export function NavRail() {
           {showLabels && <SidebarGroupLabel className="px-2">{t('nav.collaboration')}</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu className="gap-0.5">
-              {items.map((item) => (
+              {items.filter((item) => !HIDDEN_VIEWS.has(item.mode)).map((item) => (
                 <SidebarMenuItem key={item.mode}>
                   <SidebarMenuButton
                     className={cn('relative', !showLabels && 'justify-center!')}

@@ -17,6 +17,11 @@ import type { FileSortKey, FileTypeFilter } from '@/components/files/file-utils'
 
 export type ViewMode = 'threads' | 'files' | 'knowledge' | 'browser' | 'issues' | 'tasks' | 'workflows' | 'routines' | 'inbox' | 'connect' | 'skills' | 'agents';
 
+/** Thousand Hills: views left out of the sidebar, set at build time (comma list). */
+export const HIDDEN_VIEWS = new Set(
+  (process.env.NEXT_PUBLIC_HIDDEN_VIEWS || '').split(',').map((s) => s.trim()).filter(Boolean),
+);
+
 /** The Files view has two halves the folder panel switches between. */
 export type FilesSection = 'folders' | 'trash';
 

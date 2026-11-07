@@ -21,7 +21,7 @@ import { isRecentAgent } from '@/lib/helpers';
 import { countFiles } from '@/components/files/file-utils';
 import { unreadIssueCounts } from '@/lib/signals';
 import { useT } from '@/lib/i18n';
-import { useLayout, type ViewMode } from './layout-context';
+import { useLayout, HIDDEN_VIEWS, type ViewMode } from './layout-context';
 
 interface NavItem {
   mode: ViewMode;
@@ -98,7 +98,7 @@ export function NavMain({ onNavigate }: { onNavigate?: () => void }) {
       <SidebarGroupLabel>{t('nav.collaboration')}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu className="gap-0.25">
-          {items.map((item) => (
+          {items.filter((item) => !HIDDEN_VIEWS.has(item.mode)).map((item) => (
             <SidebarMenuItem key={item.mode}>
               <SidebarMenuButton
                 tooltip={item.label}
