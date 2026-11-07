@@ -90,6 +90,17 @@ def _init_firebase() -> bool:
         return False
 
 
+def _email_domain_allowed(decoded: dict) -> bool:
+    """Thousand Hills: every Firebase path (ID tokens, custom-token exchange,
+    workspace sessions minted from them) passes through _verified_firebase_token,
+    so this one check gates them all. Requires Google's own email_verified."""
+    domain = config.ALLOWED_EMAIL_DOMAIN
+    if not domain:
+        return True
+    email = str(decoded.get("email") or "").lower()
+    return decoded.get("email_verified") is True and email.endswith("@" + domain)
+
+
 @request_cached
 def _verified_firebase_token(token: str) -> Optional[dict]:
     """One SDK verification supplies both email and the other identity claims."""
@@ -101,6 +112,9 @@ def _verified_firebase_token(token: str) -> Optional[dict]:
         decoded = auth.verify_id_token(token, check_revoked=False)
         if not decoded.get("email"):
             logger.warning("firebase_auth: Token valid but no email claim")
+            return None
+        if not _email_domain_allowed(decoded):
+            logger.warning("firebase_auth: Rejected token outside ALLOWED_EMAIL_DOMAIN")
             return None
         return decoded
     except Exception as e:

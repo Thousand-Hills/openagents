@@ -49,3 +49,19 @@ def test_firebase_verification_fails_closed_without_a_project(monkeypatch):
     importlib.reload(firebase_auth)
     monkeypatch.setattr(firebase_auth, "_firebase_initialized", False, raising=False)
     assert firebase_auth.verify_firebase_token("any.token.value") is None
+
+
+def test_allowed_email_domain_gate(monkeypatch):
+    """Thousand Hills: only verified addresses at ALLOWED_EMAIL_DOMAIN pass."""
+    _fresh_config(monkeypatch, ALLOWED_EMAIL_DOMAIN="Thousandhills.app")
+    import app.firebase_auth as firebase_auth
+    importlib.reload(firebase_auth)
+    ok = firebase_auth._email_domain_allowed
+    assert ok({"email": "a@thousandhills.app", "email_verified": True})
+    assert not ok({"email": "a@thousandhills.app", "email_verified": False})
+    assert not ok({"email": "a@gmail.com", "email_verified": True})
+    assert not ok({"email": "a@evilthousandhills.app", "email_verified": True})
+    monkeypatch.delenv("ALLOWED_EMAIL_DOMAIN")
+    _fresh_config(monkeypatch)
+    importlib.reload(firebase_auth)
+    assert firebase_auth._email_domain_allowed({"email": "a@gmail.com"})

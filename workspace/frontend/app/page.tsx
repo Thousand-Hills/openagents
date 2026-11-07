@@ -1041,7 +1041,9 @@ const LOGIN_BOUNCE_KEY = 'oa_login_bounce_at';
 
 function SignInGate({ signIn }: { signIn: () => Promise<void> }) {
   const t = useT();
-  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || !!desktopHost());
+  // Thousand Hills: honour NEXT_PUBLIC_INLINE_LOGIN here too, or self-hosted
+  // builds bounce to openagents.org/login.
+  const isLocal = typeof window !== 'undefined' && (process.env.NEXT_PUBLIC_INLINE_LOGIN === '1' || window.location.hostname === 'localhost' || !!desktopHost());
   const [showInline, setShowInline] = useState(false);
 
   useEffect(() => {

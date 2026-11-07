@@ -32,6 +32,11 @@ class Config:
     # deployment sets this explicitly via the environment.
     FIREBASE_PROJECT_ID: str = os.environ.get("FIREBASE_PROJECT_ID", "")
 
+    # Thousand Hills: when set (e.g. "thousandhills.app"), Firebase tokens are
+    # accepted only for verified addresses at this domain. Empty = upstream
+    # behaviour (any account in the project).
+    ALLOWED_EMAIL_DOMAIN: str = os.environ.get("ALLOWED_EMAIL_DOMAIN", "").strip().lower()
+
     # Firebase service account credentials, the whole JSON key file as a
     # single-line string. Optional for login (verifying an ID token needs only
     # FIREBASE_PROJECT_ID plus Google's public certs) but REQUIRED for mobile
