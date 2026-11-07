@@ -95,6 +95,19 @@ describe('a keyed Hermes agent', () => {
     assert.ok(!args.includes('-m'));
   });
 
+  it('runs on the model picked in the workspace, over LLM_MODEL', () => {
+    const signedIn = makeHermes('picked');
+    signedIn.workspaceModel = 'anthropic/claude-sonnet-5-5';
+    const args = signedIn._buildHermesCmd('hi', null);
+    assert.ok(!args.includes('--provider'));
+    assert.deepEqual(args.slice(args.indexOf('-m')), ['-m', 'anthropic/claude-sonnet-5-5']);
+
+    const keyed = makeHermes('hermes2', { LLM_BASE_URL: 'https://two.example/v1', LLM_API_KEY: 'k', LLM_MODEL: 'm-two' });
+    keyed.workspaceModel = 'm-picked';
+    const keyedArgs = keyed._buildHermesCmd('hi', null);
+    assert.deepEqual(keyedArgs.slice(keyedArgs.indexOf('--provider')), ['--provider', 'openagents-hermes2', '-m', 'm-picked']);
+  });
+
   it('writes its URL and key variable, never the key, into its profile\'s config', async () => {
     const a = makeHermes('coder', { LLM_BASE_URL: 'https://one.example/v1', LLM_API_KEY: 'sk-one' }, { hermesProfile: 'coder' });
     const log = [];

@@ -607,10 +607,10 @@ class HermesAdapter extends BaseAdapter {
     if (resumeSessionId) args.push('--resume', resumeSessionId);
     if (this.yolo) args.push('--yolo');
     const endpoint = this._endpoint();
-    if (endpoint) {
-      args.push('--provider', endpoint.provider);
-      if (endpoint.model) args.push('-m', endpoint.model);
-    }
+    if (endpoint) args.push('--provider', endpoint.provider);
+    // Thousand Hills: the model picked in the workspace wins, as in modelLabel().
+    const model = String(this.workspaceModel || '').trim() || (endpoint && endpoint.model);
+    if (model) args.push('-m', model);
     return args;
   }
 
