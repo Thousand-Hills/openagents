@@ -37,6 +37,12 @@ class Config:
     # behaviour (any account in the project).
     ALLOWED_EMAIL_DOMAIN: str = os.environ.get("ALLOWED_EMAIL_DOMAIN", "").strip().lower()
 
+    # Thousand Hills: when true, every agent that newly joins a workspace is
+    # granted (read + act) to the workspace's built-in "everyone" group, so
+    # people see new agents without the owner sharing each one. Off = upstream.
+    AUTO_SHARE_AGENTS_WITH_EVERYONE: bool = os.environ.get(
+        "AUTO_SHARE_AGENTS_WITH_EVERYONE", "").strip().lower() in ("1", "true", "yes")
+
     # Firebase service account credentials, the whole JSON key file as a
     # single-line string. Optional for login (verifying an ID token needs only
     # FIREBASE_PROJECT_ID plus Google's public certs) but REQUIRED for mobile

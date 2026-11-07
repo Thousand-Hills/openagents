@@ -222,6 +222,7 @@ async def _handle_agent_join(event: Event, ctx: PipelineContext) -> Optional[Eve
             session_started_at=now,
         )
         db.add(member)
+        _auto_share_with_everyone(db, workspace.id, agent_name)
 
     workspace.last_activity_at = now
     db.flush()
@@ -232,6 +233,22 @@ async def _handle_agent_join(event: Event, ctx: PipelineContext) -> Optional[Eve
     event.metadata["network_id"] = str(workspace.id)
     event.metadata["session_id"] = new_session_id
     return event
+
+
+def _auto_share_with_everyone(db, workspace_id, agent_name: str) -> None:
+    """Thousand Hills: grant a newly joined agent to the "everyone" group when
+    AUTO_SHARE_AGENTS_WITH_EVERYONE is on. Never blocks the join."""
+    from app.config import config
+    if not config.AUTO_SHARE_AGENTS_WITH_EVERYONE:
+        return
+    from app.services.access_model import create_grant, get_or_create_builtin_groups
+    try:
+        with db.begin_nested():  # a failure rolls back only the grant
+            everyone = get_or_create_builtin_groups(db, str(workspace_id))["everyone"]
+            create_grant(db, str(workspace_id), resource_kind="agent", resource_id=agent_name,
+                         grantee_kind="group", grantee_id=everyone.id, granted_by="system:auto-share")
+    except Exception:  # e.g. the personal assistant, which can't be shared
+        logger.warning("workspace_mod: auto-share of %s in %s skipped", agent_name, workspace_id, exc_info=True)
 
 
 def _validate_session(db, workspace_id, agent_name: str, claimed_session: Optional[str]) -> Optional[str]:
