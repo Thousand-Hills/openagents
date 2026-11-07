@@ -264,6 +264,10 @@ def create_workspace(
 
     from app.access import resolve_current_user
     owner = resolve_current_user(db, authorization)
+    # Thousand Hills: with a domain allowlist, only a signed-in (allowlisted)
+    # user may create a workspace; no anonymous fallback.
+    if config.ALLOWED_EMAIL_DOMAIN and not owner:
+        return json_response(ResponseCode.UNAUTHORIZED, "Sign in to create a workspace")
     creator_email = owner.email if owner else body.creator_email
 
     workspace = Workspace(

@@ -65,3 +65,14 @@ def test_allowed_email_domain_gate(monkeypatch):
     _fresh_config(monkeypatch)
     importlib.reload(firebase_auth)
     assert firebase_auth._email_domain_allowed({"email": "a@gmail.com"})
+
+
+def test_anonymous_workspace_create_blocked_with_domain_allowlist(monkeypatch):
+    """Thousand Hills: no anonymous POST /v1/workspaces under an allowlist."""
+    import app.access
+    from app.routers import workspaces
+    monkeypatch.setattr(app.access, "resolve_current_user", lambda db, auth: None)
+    monkeypatch.setattr(workspaces.config, "ALLOWED_EMAIL_DOMAIN", "thousandhills.app")
+    body = workspaces.WorkspaceCreateRequest(name="x")
+    resp = workspaces.create_workspace(body, db=None, authorization=None)
+    assert resp.status_code == 401
