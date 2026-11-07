@@ -30,8 +30,21 @@ const googleProvider = new GoogleAuthProvider();
 const hostedDomain = process.env.NEXT_PUBLIC_GOOGLE_HOSTED_DOMAIN;
 googleProvider.setCustomParameters({ prompt: 'select_account', ...(hostedDomain ? { hd: hostedDomain } : {}) });
 
+// Thousand Hills: refuse accounts outside the Workspace domain in the browser
+// too, so they never reach the app. The backend (ALLOWED_EMAIL_DOMAIN) is the
+// real enforcement; this is UX only.
+function isAllowedUser(user: User): boolean {
+  if (!hostedDomain) return true;
+  const email = (user.email || '').toLowerCase();
+  return user.emailVerified && email.endsWith(`@${hostedDomain.toLowerCase()}`);
+}
+
 export async function signInWithGoogle() {
   const result = await signInWithPopup(auth, googleProvider);
+  if (!isAllowedUser(result.user)) {
+    await signOut(auth);
+    throw new Error(`Only @${hostedDomain} accounts can sign in.`);
+  }
   return result.user;
 }
 
@@ -62,7 +75,15 @@ export function onAuthChange(callback: (user: User | null) => void) {
  * falling back to the workspace token.
  */
 export function onIdTokenChange(callback: (user: User | null) => void) {
-  return onIdTokenChanged(auth, callback);
+  return onIdTokenChanged(auth, (user) => {
+    // Also drops a disallowed session restored from an earlier visit.
+    if (user && !isAllowedUser(user)) {
+      void signOut(auth);
+      callback(null);
+      return;
+    }
+    callback(user);
+  });
 }
 
 /** The current ID token, refreshed by the SDK if it has expired. `force`
