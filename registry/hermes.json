@@ -90,6 +90,7 @@
       "category": "chat"
     }
   ],
+  "workspace_model": true,
   "vendor": "Nous Research",
   "tagline": "Self-improving agent with tools and profiles.",
   "resolve_env": {
