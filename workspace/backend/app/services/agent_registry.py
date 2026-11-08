@@ -18,11 +18,44 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
+import httpx
+
 from app.services.cloud_providers import PROVIDERS
+
+# Thousand Hills: OpenRouter publishes its whole model list without a key, so a
+# {"provider": "openrouter"} reference resolves to that live list (cached an hour).
+# ponytail: sync fetch blocks one request per hour (10s worst case); go async if that bites.
+OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
+_OPENROUTER_TTL_S = 3600
+_openrouter_cache: Optional[tuple[float, list[dict]]] = None
+
+
+def _openrouter_models() -> Optional[list[dict]]:
+    """OpenRouter's text models, or None (caller falls back to the static list)."""
+    global _openrouter_cache
+    now = time.time()
+    if _openrouter_cache and now - _openrouter_cache[0] < _OPENROUTER_TTL_S:
+        return _openrouter_cache[1]
+    try:
+        r = httpx.get(OPENROUTER_MODELS_URL, timeout=10)
+        r.raise_for_status()
+        data = r.json().get("data", [])
+    except (httpx.HTTPError, ValueError):
+        return _openrouter_cache[1] if _openrouter_cache else None
+    models = [
+        {"id": m["id"], "label": m.get("name") or m["id"], "category": "chat"}
+        for m in data
+        if isinstance(m, dict) and m.get("id")
+        and "text" in ((m.get("architecture") or {}).get("output_modalities") or ["text"])
+    ]
+    models.sort(key=lambda m: m["label"].lower())
+    _openrouter_cache = (now, models)
+    return models
 
 
 def _registry_dir() -> Optional[Path]:
@@ -54,6 +87,10 @@ def _resolve_models(models) -> list[dict]:
     """Expand a provider reference to the live model list, or pass through an
     explicit list. Always returns a list of ``{id, label, category?}``."""
     if isinstance(models, dict) and models.get("provider"):
+        if models["provider"] == "openrouter":
+            live = _openrouter_models()
+            if live:
+                return live
         prov = PROVIDERS.get(models["provider"])
         if not prov:
             return []
